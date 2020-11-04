@@ -1,3 +1,149 @@
+# 剑指offer
+## 38 字符串的排列
+回溯 + 剪枝 dfs  
+时间复杂度O(N^2)  
+空间复杂度O（N）
+输入一个字符串，打印出该字符串中字符的所有排列。
+
+```go
+ func permutation(s string) []string {
+      length := len(s)
+      if length == 0 {
+          return nil
+      }
+      str := []byte(s)
+      result := []string{}
+      dfs(str, 0, length - 1, &result)
+      return result
+  }
+ func dfs(str []byte, i, l int, result *[]string) {
+      if i == l {
+          *result = append(*result, string(str))
+          return
+      }
+      visited := make([]bool, 26)
+      for k := i; k <= l; k++ {
+          if !visited[str[k] - 'a']{
+               visited[str[k]-'a'] = true
+               str[i], str[k] = str[k], str[i]
+               dfs(str, i+1, l, result)
+               str[i], str[k] = str[k], str[i]
+          }
+         
+      }
+ } 
+```
+
+## 46 把数字翻译成字符串
+给定一个数字，我们按照如下规则把它翻译为字符串：0 翻译成 “a” ，1 翻译成 “b”，……，11 翻译成 “l”，……，25 翻译成 “z”。
+一个数字可能有多个翻译。请编程实现一个函数，用来计算一个数字有多少种不同的翻译方法。
+
+时间复杂度 O（logN）
+空间复杂度 因为s所以O（logN）
+
+方法一、动规
+```go
+    func translateNum(num int) int {
+        str := strconv.Itoa(num)
+        result, curpre, pre := 1, 0, 0
+        for i := 0; i < len(str); i++ {
+           curpre, pre, result = pre, result, 0
+            result += pre
+            if i == 0 {
+                continue
+            }
+            s := str[i-1:i+1]
+            if s <= "25" && s >= "10" {
+                result += curpre
+            }
+        }
+        return result
+    }
+```
+方法二、整除法
+时间复杂度O（logN）
+空间复杂度O（1）
+```go
+ func translateNum(num int) int {
+     if num < 10 {
+         return 1
+     }
+ 
+     var result int
+     if num % 100 <= 25 && num % 100 >= 10 {
+         result += translateNum(num/100)
+         result += translateNum(num/10)
+     }else {
+         result += translateNum(num/10)
+     }
+ 
+     return result
+ }
+```
+
+## 29 顺时针打印矩阵
+输入一个矩阵，按照从外向里以顺时针的顺序依次打印出每一个数字。  
+时间复杂度 O（N）
+空间复杂度 O（N）
+```go
+    func spiralOrder(matrix [][]int) []int {
+        var upper, bottom, left, right int
+        bottom = len(matrix)
+        if bottom ==  0 {
+            return nil
+        }
+        right = len(matrix[0])
+        num := bottom * right
+        result := make([]int, num)
+        upper, bottom, left, right = 0, bottom - 1, 0, right - 1 
+    
+        for k := 0; k < num; {
+            for i := left; i <= right; i++ {
+                result[k] =  matrix[upper][i]
+                k++
+            }
+            upper++
+            if k > num ||upper > bottom {
+                break
+            }
+    
+            for i := upper; i <= bottom; i++ {
+                result[k] =  matrix[i][right]
+                k++
+            }
+            right--
+            if  k > num || left > right {
+                break
+            }
+    
+    
+            for i := right; i >= left; i-- {
+                result[k] =  matrix[bottom][i]
+                k++
+            }
+            bottom--
+            if  k > num || upper > bottom {
+                break
+            }
+    
+            for i := bottom; i >= upper; i-- {
+                result[k] = matrix[i][left]
+                k++
+            }
+            left++
+            if  k > num || left > right {
+                break
+            }
+    
+        }
+    
+        return result
+    }
+```
+
+
+
+
 #二叉树
 
 ##判断是否是平衡二叉树
