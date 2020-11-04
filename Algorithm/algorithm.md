@@ -141,6 +141,113 @@
     }
 ```
 
+## 24 反转链表
+定义一个函数，输入一个链表的头节点，反转该链表并输出反转后链表的头节点。  
+
+方法一、暴力解法，空间大
+
+```go
+    /**
+     * Definition for singly-linked list.
+     * type ListNode struct {
+     *     Val int
+     *     Next *ListNode
+     * }
+     */
+    func reverseList(head *ListNode) *ListNode {
+        if head == nil {
+            return nil
+        }
+    
+        var result = new(ListNode)
+        result.Next = nil
+        result.Val = head.Val
+        head = head.Next
+        for head != nil {
+             tmp := ListNode{
+                Val : head.Val,
+                Next: result,
+            }
+            result = &tmp
+            head = head.Next
+        }
+        return result
+    }
+```
+方法二、双指针
+```go
+    /**
+     * Definition for singly-linked list.
+     * type ListNode struct {
+     *     Val int
+     *     Next *ListNode
+     * }
+     */
+    func reverseList(head *ListNode) *ListNode {
+    	var cur *ListNode
+        for head != nil {
+            tmp := head.Next
+            head.Next = cur
+            cur = head
+            head = tmp
+        }
+    
+        return  cur
+    }
+```
+
+## 25 合并两个有序链表
+输入两个递增排序的链表，合并这两个链表并使新链表中的节点仍然是递增排序的。
+```go
+    /**
+     * Definition for singly-linked list.
+     * type ListNode struct {
+     *     Val int
+     *     Next *ListNode
+     * }
+     */
+    func mergeTwoLists(l1 *ListNode, l2 *ListNode) *ListNode {
+        result := new(ListNode)
+        tmp := result
+        for l1 != nil && l2 != nil {
+            if l1.Val < l2.Val {
+                tmp.Next = l1
+                l1 = l1.Next
+            }else{
+                tmp.Next = l2
+                l2 = l2.Next
+            }
+            tmp = tmp.Next
+        }
+    
+        if l1 != nil {
+            tmp.Next = l1
+        }
+        if l2 != nil {
+            tmp.Next = l2
+        }
+        return result.Next
+    }
+```
+
+## 3 重复数组中的重复数字
+
+找出数组中重复的数字。
+在一个长度为 n 的数组 nums 里的所有数字都在 0～n-1 的范围内。数组中某些数字是重复的，但不知道有几个数字重复了，也不知道每个数字重复了几次。
+请找出数组中任意一个重复的数字。
+
+```go
+    func findRepeatNumber(nums []int) int {
+        count := make([]int, cap(nums))
+        for i := 0;i < len(nums); i++{
+            count[nums[i]]++
+            if count[nums[i]] > 1 {
+                return nums[i]
+            }
+        }
+        return -1
+    }
+```
 
 
 
