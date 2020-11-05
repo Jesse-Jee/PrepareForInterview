@@ -250,6 +250,118 @@
 ```
 
 
+## 9 用两个栈实现队列
+
+```go
+    type CQueue struct {
+      in stack
+      out stack
+    }
+    
+    type stack []int
+    
+    func (s *stack) Push(value int) {
+        *s = append(*s, value)
+    }
+    
+    func (s *stack) Pop() int {
+        l := len(*s)
+        n := (*s)[l-1]
+        *s = (*s)[:l-1]
+        return n
+    }
+    
+    
+    
+    func Constructor() CQueue {
+       return CQueue{}
+    }
+    
+    
+    func (this *CQueue) AppendTail(value int)  {
+        this.in.Push(value)
+    }
+    
+    
+    func (this *CQueue) DeleteHead() int {
+       if len(this.out) != 0 {
+           return this.out.Pop()
+       }else if len(this.in) != 0 {
+           for len(this.in) != 0 {
+               this.out.Push(this.in.Pop())
+           }
+           return this.out.Pop()
+       } 
+       return -1
+    }
+    
+    
+    /**
+     * Your CQueue object will be instantiated and called as such:
+     * obj := Constructor();
+     * obj.AppendTail(value);
+     * param_2 := obj.DeleteHead();
+     */
+```
+
+## 24 连续子数组的最大和
+输入一个整型数组，数组中的一个或连续多个整数组成一个子数组。求所有子数组的和的最大值。
+要求时间复杂度为O(n)  
+
+```go
+    func maxSubArray(nums []int) int {
+         result := nums[0]
+         for i := 1; i < len(nums); i++{
+                nums[i] = max(nums[i-1]+nums[i], nums[i])
+                result = max(result, nums[i])
+         } 
+         return result  
+    }
+    
+    func max (a,b int) int {
+        if a > b {
+            return a
+        }
+        return b
+    }
+```
+
+## 48 最长不含重复字符的子字符串
+请从字符串中找出一个最长的不包含重复字符的子字符串，计算该最长子字符串的长度。  
+使用动规或滑动窗口  
+
+方法一、滑动窗口
+时间复杂度O（N^2）
+空间复杂度O（1）
+
+```go
+    func lengthOfLongestSubstring(s string) int {
+        l := len(s)
+        if l == 0 {
+            return 0
+        }
+        left, maxLen := 0, 1
+        m := make(map[byte]bool, 26)
+        m[s[0]] = true
+    
+        for right := 1; right < l; {
+            if _, ok := m[s[right]]; !ok {
+                m[s[right]] = true
+                right++  
+            }else{
+                delete(m, s[left])
+                left++
+            }
+            tmpLen := right - left
+            if tmpLen > maxLen {
+                maxLen = tmpLen
+            }
+        }
+        return maxLen
+    }
+```
+方法二、动态规划方程 + 哈希
+
 
 #二叉树
 
