@@ -185,10 +185,131 @@ DOS时期，进程使用内存是直接使用物理地址，因为进程会修�
 - 最通用的调度算法，多数OS都使用该方法或其变形，如UNIX、Windows等
 
 
-#select/poll/epoll 原理及底层实现
+# io多路复用
+## 定义
+IO多路复用是一种同步IO模型，实现一个线程监控多个文件句柄。一旦某个文件句柄就绪，就能通知应用程序进行相应读写操作，没有文件句柄就绪时会阻塞应用程序，
+交出CPU。多路指的是网络连接，复用指的是同一个线程。
+
+io多路复用指的是，单个线程通过记录跟踪每个sock的状态来同时管理多个i/o流。
+发明这个的原因是，尽量多的提高服务器端的吞吐能力。
+
+## 为什么会有IO多路复用
+- BIO 同步阻塞
+服务器采用单线程，当accept接收一个请求后，在recv或send调用阻塞时，无法接收其他请求。
+服务器采用多线程，当accept接收一个请求后，开启线程进行recv,可以完成并发处理。但随着请求数增加，大量线程占用很大内存空间，线程切换也带来很大开销。
+
+- NIO 同步非阻塞
+服务器当accept一个请求后，加入到一个fds集合，每次轮询fds集合recv数据，没有数据立即返回错误。 每次轮询所有会很浪费CPU。
+
+- IO多路复用
+服务器端采用单线程通过select/poll/epoll等系统调用获取fd列表，遍历有时间fd进行accept/recv/send使其能支持更多并发连接请求。
 
 
-#io多路复用
+## select/poll/epoll 原理及底层实现
+
+### select
+可以设置要监听的描述符，也可以设置等待超时时间。如果有事件就绪或超时，select函数就会返回，支持监听可读，可写，异常三类事件。
+```go
+    int main() {
+      /*
+       * 这里进行一些初始化的设置，
+       * 包括socket建立，地址的设置等,
+       */
+    
+      fd_set read_fs, write_fs;
+      struct timeval timeout;
+      int max = 0;  // 用于记录最大的fd，在轮询中时刻更新即可
+    
+      // 初始化比特位
+      FD_ZERO(&read_fs);
+      FD_ZERO(&write_fs);
+    
+      int nfds = 0; // 记录就绪的事件，可以减少遍历的次数
+      while (1) {
+        // 阻塞获取
+        // 每次需要把fd从用户态拷贝到内核态
+        nfds = select(max + 1, &read_fd, &write_fd, NULL, &timeout);
+        // 每次需要遍历所有fd，判断有无读写事件发生
+        for (int i = 0; i <= max && nfds; ++i) {
+          if (i == listenfd) {
+             --nfds;
+        // 这里处理accept事件
+                 FD_SET(i, &read_fd);//将客户端socket加入到集合中
+              }
+              if (FD_ISSET(i, &read_fd)) {
+                --nfds;
+                // 这里处理read事件
+              }
+              if (FD_ISSET(i, &write_fd)) {
+                 --nfds;
+                // 这里处理write事件
+              }
+            }
+          }
+        
+```
+fd_set 是无符号long型数组，共16个元素，每一位对应一个fd，最多可以监听1024个。
+每次调用select都要传递所有监听集合，就需要频繁的从用户态到内核态拷贝数据。
+即便有fd就绪了，也需要遍历整个监听集合，来判断哪个fd是可操作的。
+
+#### select缺点
+- 单个进程打开的fd是有限的，最多1024个
+- 每次调用select，都需要把fd集合从用户态拷贝到内核态，开销很大。
+- 对socket扫描是线性扫描，轮询方式，高并发时效率较低
+
+
+### poll 
+支持的最多监听数目等于最多打开的文件描述符个数。
+也需要传递所有监听集合
+需要遍历整个监听集合来判断哪个fd是可操作的。
+
+与select相比，只是少了fd 1024限制
+
+#### poll缺点
+同select缺点 2，3
+
+
+### epoll
+```go
+    #include <sys/epoll.h>
+    
+    // 数据结构
+    // 每一个epoll对象都有一个独立的eventpoll结构体
+    // 用于存放通过epoll_ctl方法向epoll对象中添加进来的事件
+    // epoll_wait检查是否有事件发生时，只需要检查eventpoll对象中的rdlist双链表中是否有epitem元素即可
+    struct eventpoll {
+        /*红黑树的根节点，这颗树中存储着所有添加到epoll中的需要监控的事件*/
+        struct rb_root  rbr;
+        /*双链表中则存放着将要通过epoll_wait返回给用户的满足条件的事件*/
+        struct list_head rdlist;
+    };
+    
+    // API
+    
+    int epoll_create(int size); // 内核中间加一个 ep 对象，把所有需要监听的 socket 都放到 ep 对象中
+    int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event); // epoll_ctl 负责把 socket 增加、删除到内核红黑树
+    int epoll_wait(int epfd, struct epoll_event * events, int maxevents, int timeout);// epoll_wait 负责检测可读队列，没有可读 socket 则阻塞进程
+```
+epoll提供三个接口:
+epoll_create用于创建一个epoll，并获取一个句柄。
+epoll_ctl用于添加或删除fd对应的事件信息。
+除了指定fd和要监听的事件类型，还可以传入一个event_data，通常会按需定义一个数据结构，用于处理对应的fd。每次都只需要传入一个要操作的fd，
+无需传入所有监听集合，而且只需要注册这一次。
+通过 epoll_wait得到的fd集合都是已经就绪的，逐个处理即可，无需遍历所有监听集合。
+
+#### epoll缺点
+只能工作在Linux下
+
+### epoll水平触发LT与边缘触发ET模式的区别
+- LT模式下，只要这个fd还有数据可读，每次epoll_wait都会返回它的事件，提醒用户程序去操作。
+- ET模式下，它只会提醒一次，直到下次再有数据流入之前都不会再有提示了，无论fd中是否还有数据可读。所以在ET模式下，read一个fd时一定要把buffer读完。
+
+
+## select/poll/epoll区别
+数据结构： bitmap, 数组， 红黑树
+支持的最大连接数：1024， 无上限，无上限
+工作效率：轮询O（N），轮询O（N），回调O（1）
+fd拷贝： 每次调用select拷贝，每次调用poll拷贝，fd首次调用epoll_ctl拷贝 每次调用epoll_wait不拷贝。
 
 
 #硬链接和软链接

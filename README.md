@@ -1,2 +1,2 @@
 # PrepareForInterview
-知识点复习脑图整理
+一些知识的集合

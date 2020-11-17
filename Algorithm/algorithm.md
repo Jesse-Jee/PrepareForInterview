@@ -360,14 +360,110 @@
         return maxLen
     }
 ```
-方法二、动态规划方程 + 哈希
 
 
-#二叉树
+## 68 二叉树最近公共祖先II
+给定一个二叉树, 找到该树中两个指定节点的最近公共祖先
+
+后序遍历
+时间复杂度O（N）
+空间复杂度O（N）
+```go
+    /**
+     * Definition for TreeNode.
+     * type TreeNode struct {
+     *     Val int
+     *     Left *ListNode
+     *     Right *ListNode
+     * }
+     */
+     func lowestCommonAncestor(root, p, q *TreeNode) *TreeNode {
+         if root == nil {
+             return nil
+         }
+    
+         if root.Val == p.Val || root.Val == q.Val {
+             return root
+         }
+    
+         left := lowestCommonAncestor(root.Left, p, q)
+         right := lowestCommonAncestor(root.Right, p, q)
+    
+         if left != nil && right != nil {
+             return root
+         }
+         if left == nil {
+             return right
+         }
+         return left
+    }
+```
+
+## 68 二叉搜索树的最近公共祖先I
+
+方法一、迭代法：
+```go
+    func lowestCommonAncestor(root, p, q *TreeNode) *TreeNode {
+        pVal, qVal := p.Val, q.Val
+        node := root 
+        for node != nil {
+            parentVal := node.Val
+            switch{
+                case pVal > parentVal && qVal > parentVal:
+                    node = node.Right
+                case pVal < parentVal && qVal < parentVal:
+                    node = node.Left
+                default:
+                    return node
+            }
+        }
+        return nil
+    }
+```
+
+方法二、递归法：
+```go
+    func lowestCommonAncestor(root, p, q *TreeNode) *TreeNode {
+        rootVal, pVal, qVal := root.Val, p.Val, q.Val
+        switch {
+            case pVal > rootVal && qVal > rootVal:
+                return lowestCommonAncestor(root.Right,p,q)
+            case pVal < rootVal && qVal < rootVal:
+                return lowestCommonAncestor(root.Left,p,q)
+            default:
+                return root
+        }
+    }
+```
+
+## 检查链表是否有环
+```go
+    /**
+     * Definition for singly-linked list.
+     * type ListNode struct {
+     *     Val int
+     *     Next *ListNode
+     * }
+     */
+    func hasCycle(head *ListNode) bool {
+        fast, slow := head, head
+        for fast != nil && fast.Next != nil {
+            fast = fast.Next.Next
+            slow = slow.Next
+            if fast == slow {
+                return true
+            }
+        }
+        return false
+    }
+```
+
+
+
+## 51 数组中的逆序对
 
 ##判断是否是平衡二叉树
 
-##二叉树的最近公共祖先
 ##旋转二叉树
 ##二叉树前序遍历
 
@@ -387,9 +483,6 @@
 #偏转顺序数组
 
 #区间数组求交集
-
-
-#两个栈实现一个队列
 
 
 #十进制ip转换为32位整数
@@ -477,7 +570,6 @@
 
 #如何判定两棵树是相同的
 #二叉树的高度
-#合并两个有序链表
 
 
 #10亿数据内存够用的情况下，选取前100
