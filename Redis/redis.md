@@ -1,3 +1,12 @@
+# Redis支持的数据类型及底层原理
+- string
+- list
+- hash
+- set
+- sorted set
+
+
+
 #Redis线程模型
 
 
