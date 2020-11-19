@@ -562,6 +562,19 @@ TCP头中还有端口号，HTTP服务器正在监听这个端口，于是将包�
     - TCP是按照客户端IP，端口，服务器端IP，端口来确定一个连接的，而QUIC是让客户端生成一个connection ID(64)位来区别不同连接，
     只要ID不变就不需要重新连接。
 
+## GET、POST区别
+- 都有请求头，请求行，POST多了请求body
+- get多用于查询，请求参数放在URL里。POST用来提交
+- get直接添加在URL中，在URL就能看到内容，POST放在body里，无法直接看到。
+- get URL长度有限制，因此数据长度有限制。
+
+## 状态码分类：
+- 1XX- 信息型，服务器收到请求，需要请求者继续操作。 
+- 2XX- 成功型，请求成功收到，理解并处理。  
+- 3XX - 重定向，需要进一步的操作以完成请求。  
+- 4XX - 客户端错误，请求包含语法错误或无法完成请求。  
+- 5XX - 服务器错误，服务器在处理请求的过程中发生了错误。
+
 
 # HTTPS
 在HTTP基础上再加一层TLS，为了应对HTTP明文传输的缺点。TLS在应用层。
@@ -644,18 +657,64 @@ random3，生成preMaster key。
 
 
 # HTTP重定向机制
+整个页面被迁移到其他的URL下了。
+重定向由服务器发送特殊响应触发，状态码为3XX
+浏览器收到重定向响应后，采用该响应提供的新URL，重新访问。
 
+- 301、308 永久重定向
+- 302、303、307 临时重定向
+- 300、304 特殊重定向
 
+# DNS
+每个人上网都需要用到它，必须是高可用，高并发和分布式的。
 
-# Session，Cookie区别
+- 根DNS服务器：返回顶级域DNS服务器IP地址
+- 顶级域DNS服务器：返回权威DNS服务器IP地址
+- 权威DNS服务器：返回相应主机IP地址
+
+## DNS解析过程
+1. 电脑端发送一个DNS请求，问www.163.com的IP是什么呀？并发送给本地DNS服务器。
+    - 本地DNS服务器在哪？如果DHCP配置了，那就是网络服务提供商自动分配，在网络服务商的机房里。
+2. 本地DNS服务器接收到客户端的请求，如果在它本地的缓存中，就直接把对应的IP地址返回。如果没有，本地DNS会去问它的根域名服务器。
+3. 根域名服务器收到本地DNS的请求，发现是由.com区域管理，给你它的顶级域名服务器的地址，你去问问它吧。
+4. 本地DNS转向顶级域名服务器询问
+5. 顶级域名服务器找到163.com的权威DNS服务器地址，你去问问它吧。
+6. 本地DNS转向权威DNS服务器询问
+7. 权威DNS服务器查询后把IP地址告诉本地DNS
+8. 本地DNS告诉客户端
+9. 客户端与目标地址建立连接
 
 
 # 网络协议栈
+网络协议是分层的。
+五层模型
+
+- 应用层 FTP HTTP DNS SFTP
+- 运输层 TCP UDP
+- 网络层 IP ICMP ARP
+- 数据链路层 
+- 物理层
+
+![Image_text](https://raw.githubusercontent.com/jizengguang/PrepareForInterview/master/Picture/network_prof.png)
 
 
-# DNS协议解析过程
+数据进入TCP/IP协议栈时会被层层封装
+![Image_text](https://raw.githubusercontent.com/jizengguang/PrepareForInterview/master/Picture/net.png)
 
 
+# session和cookie的区别
+- session：HTTP协议是无状态的协议，当服务端需要记录用户的状态时，就需要用session来记录。如标识用户，跟踪用户。
+          session保存在服务器端，有唯一标识。
+- cookie：每次HTTP请求的时候，客户端发送相应的cookie到服务端，实际上大多数的应用都是用 Cookie 来实现Session跟踪的，
+第一次创建Session的时候，服务端会在HTTP协议中告诉客户端，需要在 Cookie 里面记录一个Session ID，以后每次请求把这个会话ID发送到服务器，
+我就知道你是谁了。有人问，如果客户端的浏览器禁用了 Cookie 怎么办？一般这种情况下，会使用一种叫做URL重写的技术来进行会话跟踪，
+即每次HTTP交互，URL后面都会被附加上一个诸如 sid=xxxxx 这样的参数，服务端据此来识别用户。
+    访问一个网站，下次不想输入账户和密码了，可以写到cookie里。
+    
+## 总结
+- Session是在服务端保存的一个数据结构，用来跟踪用户的状态，这个数据可以保存在集群、数据库、文件中；
+- Cookie是客户端保存用户信息的一种机制，用来记录用户的一些信息，也是实现Session的一种方式。
 
 
-
+                                        
+                                       
