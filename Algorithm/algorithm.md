@@ -458,6 +458,107 @@
     }
 ```
 
+## 22. 链表中倒数第k个节点
+输入一个链表，输出该链表中倒数第k个节点。为了符合大多数人的习惯，本题从1开始计数，即链表的尾节点是倒数第1个节点。例如，一个链表有6个节点，
+从头节点开始，它们的值依次是1、2、3、4、5、6。这个链表的倒数第3个节点是值为4的节点。
+
+双指针：
+```go
+    func getKthFromEnd(head *ListNode, k int) *ListNode {
+        fast, slow := head, head
+        for i := 0; i < k ; i++{
+            if fast == nil {
+                return nil
+            }
+            fast = fast.Next
+        }
+        
+        for fast != nil {
+            fast = fast.Next
+            slow = slow.Next
+        }
+        
+        return slow
+    }
+```
+
+# 二叉树层序遍历
+bfs递归
+
+```go
+    var result [][]int
+    func levelOrder(root *TreeNode) [][]int {
+        if root == nil {
+            return nil
+        }
+        result = [][]int{}
+        bfs(root, 0)
+        return result
+    }
+    
+    func bfs(root *TreeNode, level int) {
+        if root == nil {
+            return
+        }
+    
+        if level == len(result) {
+            result = append(result, []int{})
+        } 
+    
+        result[level] = append(result[level], root.Val)
+        bfs(root.Left, level+1)
+        bfs(root.Right, level+1)
+    }
+```
+非递归
+
+```go
+    func levelOrder(root *TreeNode) [][]int {
+        result := [][]int{}
+        if root == nil {
+           return result
+        }
+    
+        q := []*TreeNode{root}
+        for i := 0; len(q) > 0; i++{
+            result = append(result, []int{})
+            p := []*TreeNode{}
+            for j := 0; j < len(q); j++{
+                node := q[j]
+                result[i] = append(result[i], node.Val)
+                if node.Left != nil {
+                    p = append(p, node.Left)
+                }
+                if node.Right != nil {
+                    p = append(p, node.Right)
+                }
+            }
+            q = p
+        }   
+        return result
+    }
+```
+
+# 07 重建二叉树
+输入某二叉树的前序遍历和中序遍历的结果，请重建该二叉树。假设输入的前序遍历和中序遍历的结果中都不含重复的数字。  
+例如，给出  
+前序遍历 preorder = [3,9,20,15,7]  
+中序遍历 inorder = [9,3,15,20,7]  
+
+```go
+    func buildTree(preorder []int, inorder []int) *TreeNode {
+        for k := range inorder {
+            if preorder[0] == inorder[k] {
+                return &TreeNode{
+                    Val: inorder[k],
+                    Left: buildTree(preorder[1:k+1], inorder[0:k]),
+                    Right:buildTree(preorder[k+1:],inorder[k+1:]),
+                }
+            }
+        }
+        return nil
+    }
+```
 
 
 ## 51 数组中的逆序对
@@ -522,7 +623,8 @@
 
 #快排
 
-#归并排序
+# 归并排序
+
 
 
 #选择排序

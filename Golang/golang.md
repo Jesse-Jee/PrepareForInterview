@@ -861,6 +861,76 @@ recover（）只有在defer的上下文中才有效，（且只有通过defer中
     go build -gcflags '-m' xx.go
 ```
 
+# mutex
+用于解决资源并发访问问题。  
+如：
+```go
+    
+ import (
+        "fmt"
+        "sync"
+    )
+    
+    func main() {
+        var count = 0
+        // 使用WaitGroup等待10个goroutine完成
+        var wg sync.WaitGroup
+        wg.Add(10)
+        for i := 0; i < 10; i++ {
+            go func() {
+                defer wg.Done()
+                // 对变量count执行10次加1
+                for j := 0; j < 100000; j++ {
+                    count++
+                }
+            }()
+        }
+        // 等待10个goroutine完成
+        wg.Wait()
+        fmt.Println(count)
+    }
+
+```
+
+count++ 由于并发访问，加的数就出问题。  
+使用命令 go run -race xx.go 就可以检测data race问题。它是编译器通过探测所有内存访问，加入代码能监视对这些内存的访问，在代码运行时，
+就可以监控到堆共享变量的非同步访问。
+
+有Lock（）和Unlock（）两个方法。
+
+在实现上，有：  
+- lockfast： 直接获得锁
+- lockslow： 经过一系列判断获得锁。
+
+## mutex实现
+mutex有两种模式：  
+- 正常模式
+- 饥饿模式
+
+
+**在正常模式下**，waiter FIFO，被唤醒的waiter不是直接获得锁，而是和新来的进行竞争。（因为新来的在时间片内，不需要进行上下文的切换）  
+如果没有竞争过新来的，被唤醒的waiter就会被插到等待队列的队首。如果waiter获取不到锁的时间超过了1ms，就会进入到饥饿模式。    
+
+**饥饿模式下**，mutex的拥有者将直接把锁交给队首的waiter（这是为了防止老的goroutine一直获取不到锁苦苦等待），新来的goroutine不会尝试获取锁，
+即使看起来锁没有被持有，也不会去抢，也不会自旋，而是加入到等待队列的队尾。
+
+**什么时候切换回正常模式呢？**
+- 当前持有mutex的waiter发现，自己已经是最后一个等待的waiter了，后面没人来了。
+- 自己获取锁少于1ms了。
+
+## 等待waiter队列最大数量是多少？
+state 是int32类型 出去3位标记位，就是32-3 = 29,即2的29次方 - 1 约等于5亿个。一个goroutine差不多占2k,5亿个也不过占1T左右。
+
+
+
+# RWMutex
+reader/writer 互斥锁  
+同一时刻，可以由任意数量的reader持有，或者被单个writer持有。
+
+- Lock()、Unlock() 写操作时调用方法
+- RLock()、RUnlock() 读操作时调用方法
+- RLocker 返回一个读对象。
+
 
 
 # proof
@@ -884,6 +954,7 @@ recover（）只有在defer的上下文中才有效，（且只有通过defer中
 
 
 #sync.Once
+
 
 
 #内存泄露分析
