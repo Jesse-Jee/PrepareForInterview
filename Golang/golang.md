@@ -669,6 +669,26 @@ GC开始，堆对象4被标记为灰色。
 2. 达到定时时间 2m interval 
 
 
+# Go的内存模型
+在并发环境中多goroutine读取相同变量时，变量的可见性条件。       
+即：在什么情况下，goroutine在读取一个变量的值时，能够看到其他goroutine对这个变量的写的结果。     
+
+程序运行的时候，两个操作的执行顺序不一定得到保证。由此引出一个重要概念：        
+**Happens-before**
+在一个goroutine内部，程序的执行顺序和它们的代码指定的顺序是一样的，即便编译器和CPU重排了读写顺序，从行为上来看，也和代码的指定顺序一样。      
+    
+**go只保证goroutine的内部重排对读写的顺序没有影响。**
+
+如果要保证多个goroutine对一个共享变量的顺序，可以使用并发原语为读写建立happens-before关系，来保证顺序。
+
+
+保证的happens-before：  
+- init函数    
+    - main函数一定是在导入包的init函数之后执行。
+- 后面还有很多...
+
+  
+
 # 闭包用法
 
 函数是头等对象，可以作为参数传递，可以做函数的返回值，也可以绑定到变量。Go语言称这样的参数、返回值或变量为function value。
@@ -850,7 +870,7 @@ recover（）只有在defer的上下文中才有效，（且只有通过defer中
 如果一个函数返回对一个变量的引用，那么它就会发生逃逸。
 
 ## 逃逸分析是如何完成的。
-编译器分析代码的特征和代码生命周期，GO中的变量只有在编译器可以证明函数返回后不会再背引用，才分配到栈上，其他情况都分配到堆上。
+编译器分析代码的特征和代码生命周期，GO中的变量只有在编译器可以证明函数返回后不会再被引用，才分配到栈上，其他情况都分配到堆上。
 
 编译器会根据变量是否被外部引用来决定是否逃逸。
 - 如果函数外部没有引用，分配到栈上。有一种情况除外，局部变量所需内存过大。
@@ -931,7 +951,293 @@ reader/writer 互斥锁
 - RLock()、RUnlock() 读操作时调用方法
 - RLocker 返回一个读对象。
 
+大量并发读，少量并发写的场景，可以使用RWMutex。  
 
+## RWMutex实现
+- 写优先
+一个正在阻塞的Lock调用，会排除新的reader请求到锁。  
+```go
+type RWMutex struct {
+  w           Mutex   // 互斥锁解决多个writer的竞争
+  writerSem   uint32  // writer信号量
+  readerSem   uint32  // reader信号量
+  readerCount int32   // reader的数量
+  readerWait  int32   // writer等待完成的reader的数量
+}
+
+const rwmutexMaxReaders = 1 << 30
+```
+两个信号量
+
+#channel原理及实现
+基于通信顺序进程模型（CSP）思想，设计而来。
+
+## channel几种使用类型
+- 数据交流
+    - 当作并发的buffer或queue，解决生产者消费者问题。
+- 数据传递
+    - 一个goroutine把数据交给另一个goroutine
+- 信号通知
+    - 一个goroutine把信号传递给另一个goroutine
+- 任务编排
+    - 让一组goroutine按照一定顺序并发
+- 锁
+    - 利用channel实现互斥锁
+
+## 基本用法
+
+- 只接收  
+    <-chan int 只能从chan接收int 
+- 只发送    
+    chan<- struct{}  只能发送struct
+- 既接收又发送   
+    chan string 可以发送、接收string
+
+箭头指向chan，就表示可以往里塞数据。  
+箭头原理chan，就表示往外吐数据。   
+
+chan中的元素可以是任意类型。  
+如：  
+chan<- chan int   
+chan<- <-chan int   
+<-chan <-chan int   
+chan (<-chan int)   
+
+**未初始化的chan零值是nil。对nil的chan发送接收数据总会阻塞**  
+
+
+## 实现原理
+### 数据结构
+```go
+    type hchan struct {
+    	qcount   uint           // total data in the queue 队列元素数量
+    	dataqsiz uint           // size of the circular queue 队列大小
+    	buf      unsafe.Pointer // points to an array of dataqsiz elements 队列指针
+    	elemsize uint16         // chan 中元素大小
+    	closed   uint32         // 是否已关闭    
+    	elemtype *_type // element type chan中元素类型
+    	sendx    uint   // send index send在buf中的索引
+    	recvx    uint   // receive index recv在buf中的索引
+    	recvq    waitq  // list of recv waiters receiver的等待队列
+    	sendq    waitq  // list of send waiters send的发送队列
+    
+    	// lock protects all fields in hchan, as well as several
+    	// fields in sudogs blocked on this channel.
+    	//
+    	// Do not change another G's status while holding this lock
+    	// (in particular, do not ready a G), as this can deadlock
+    	// with stack shrinking.
+    	lock mutex  // 互斥锁，用于保护所有字段
+    }
+    
+    type waitq struct {
+    	first *sudog
+    	last  *sudog
+    }
+```
+
+### 初始化
+编译器根据容量大小，选择调用makechan64还是makechan。  
+```go
+    func makechan64(t *chantype, size int64) *hchan {
+    	if int64(int(size)) != size {
+    		panic(plainError("makechan: size out of range"))
+    	}
+    
+    	return makechan(t, int(size))
+    }
+    
+    func makechan(t *chantype, size int) *hchan {
+    	elem := t.elem
+    
+    	// compiler checks this but be safe.
+    	if elem.size >= 1<<16 {
+    		throw("makechan: invalid channel element type")
+    	}
+    	if hchanSize%maxAlign != 0 || elem.align > maxAlign {
+    		throw("makechan: bad alignment")
+    	}
+    
+    	mem, overflow := math.MulUintptr(elem.size, uintptr(size))
+    	if overflow || mem > maxAlloc-hchanSize || size < 0 {
+    		panic(plainError("makechan: size out of range"))
+    	}
+    
+    	// Hchan does not contain pointers interesting for GC when elements stored in buf do not contain pointers.
+    	// buf points into the same allocation, elemtype is persistent.
+    	// SudoG's are referenced from their owning thread so they can't be collected.
+    	// TODO(dvyukov,rlh): Rethink when collector can move allocated objects.
+    	var c *hchan
+    	switch {
+    	case mem == 0:
+    		// Queue or element size is zero. 如果chan的大小或者元素的size是0，不必创建buf.
+    		c = (*hchan)(mallocgc(hchanSize, nil, true))
+    		// Race detector uses this location for synchronization.
+    		c.buf = c.raceaddr()
+    	case elem.ptrdata == 0:
+    		// Elements do not contain pointers. 如果元素类型不是指针，分配一块连续的内存给hchan和buf
+    		// Allocate hchan and buf in one call.
+    		c = (*hchan)(mallocgc(hchanSize+mem, nil, true))
+    		c.buf = add(unsafe.Pointer(c), hchanSize)
+    	default:
+    		// Elements contain pointers. 元素包含指针，单独分配buf
+    		c = new(hchan)
+    		c.buf = mallocgc(mem, elem, true)
+    	}
+    
+    	c.elemsize = uint16(elem.size)
+    	c.elemtype = elem
+    	c.dataqsiz = uint(size)
+    	lockInit(&c.lock, lockRankHchan)
+    
+    	if debugChan {
+    		print("makechan: chan=", c, "; elemsize=", elem.size, "; dataqsiz=", size, "\n")
+    	}
+    	return c
+    }
+```
+
+### send
+在发送数据给chan的时候，会把send语句转换为chansend1函数，chansend1调用chansend。        
+先判断是否为nil，如果是调用gopark阻塞休眠。   
+如果chan已满，但还没有close，直接返回。      
+如果已经close，再发送数据报panic。      
+如果等待队列中有等待的receiver，就把它从队列中弹出，然后直接把数据交给它，而不需要放到buf中，速度可以快一些。        
+如果没有等待的receiver，就把数据放到buf中，放入后就返回。  
+如果buf满了，发送者的goroutine就会加入到发送者等待队列，直到被唤醒。    
+
+### recv
+调用chanrecv1函数，要两个返回值，会调用chanrecv2。他们俩都会调用chanrecv函数。    
+chan为nil时，调用者会被永远阻塞。    
+如果chan已经被close，并且队列中没有缓存的元素，那么返回true,false. 
+如果是unbuffer的chan，就把sender的数据复制给receiver，否则就从队列头部取一个值，并把sender的放到队列尾部。    
+如果没有等待的sender，如果buf中有元素，就取个元素给receiver。     
+如果buf中没有元素，当前receiver就会阻塞，直到从sender接收了数据，或者chan被close，才会返回。     
+
+### close
+通过close，可以把chan关闭。调用closechan函数。        
+
+如果chan 为nil，close会panic。如果chan已经被close，再次close会panic。   
+如果chan不为nil，也没有被close过，就把等待队列中的sender，recver从队列中全部移除并唤醒。
+
+
+## 易出问题的坑
+- 关闭nil的chan
+- send已经close的chan
+- close已经close的chan
+
+![Image_text](https://raw.githubusercontent.com/jizengguang/PrepareForInterview/master/Picture/chan_method.png)
+
+
+
+# 内存泄露分析
+goroutine被阻塞，无法被gc，会造成内存泄漏。
+通常情况下，是在使用chan时，一个goroutine往无缓冲的chan中写入数据，而数据因为某些原因没有被接收。
+如：      
+```go
+    func process(timeout time.Duration) bool {
+    	ch := make(chan bool)
+    
+    	go func() {
+    		time.Sleep(timeout + time.Second)
+    		ch <- true
+    		fmt.Println("exit goroutine")
+    	}()
+    
+    	select {
+    	case result := <-ch:
+    		return result
+    	case <-time.After(timeout):
+    		return false
+    	}
+    }
+// 如果超时先发生，第13行将被永远阻塞。造成goroutine泄漏。
+// 因为unbuffer的chan必须 reader，writer同时准备好才行。
+```
+
+# context
+
+## context用途
+- 上下文信息传递，如：处理HTTP请求，在请求链路上传递信息     
+- 控制子goroutine的运行
+- 超时控制的方法调用
+- 可以取消的方法调用
+
+## 实现
+```go
+type Context interface {
+    Deadline() (deadline time.Time, ok bool)
+    Done() <-chan struct{}
+    Err() error
+    Value(key interface{}) interface{}
+}
+```
+4个方法：        
+- Deadline()  返回这个context被取消的截止日期。如果没有设置，ok返回false。     
+- Done()  返回一个chan对象，在context被取消时，这个chan会被close。        
+    - 如果Done（）没有被close，Err返回nil，如果被close了，Err返回close的原因。
+- Err()
+- Value()   返回与context绑定的key的value。     
+
+- context.Background()
+- context.ToDo()
+都是返回一个非nil的空context对象。无截止时间，不会被cancel，不会超时。一般用在主函数、初始化、测试等。。。       
+
+一般性规则：
+- 一般当参数时放第一个
+- 不把nil当context参数值。
+- 用来做临时上下文透传的，不要持久化和长久保存。
+- key不要是字符串类型或者其他内建类型。
+- 常使用struct{}当key的类型。
+
+**几个特殊用途的方法：**
+- WithValue 基于parent context 生成了新的context，保存了key-value，用于传递上下文.
+```go        
+type valueCtx struct {
+    Context
+    key, val interface{}
+}
+```     
+优先从自己的key-val中找，如果没找到，就去parent里找。
+
+- WithCancel 
+    返回parent的副本，只是done channel是新建对象，它的类型是cancelCtx。     
+    主要用于需要主动取消的长时间任务时。正常完成了，需要调用cancel()方法，切记。 
+- WithTimeout
+    与WithDeadline增加了超时时间的参数，超时时间+当前时间就是截止时间。        
+- WithDeadline
+    设置一个timerCtx。
+    timerCtx被close主要有三个原因：    
+    - 截止时间到了
+    - cancel被调用了
+    - parent的Done被close了。       
+
+
+# slice和数组
+数组array和切片slice都是集合类型，用来存储某一种类型的值。  
+**区别：**  
+- 数组的长度是固定的，切片是可变长的。             
+- 数组是值类型，切片是引用类型。
+- 数组的容量永远等于长度。
+
+数组的长度声明的时候就需要给定。        
+
+我们可以看成切片是对数组的简单封装。
+数组可以叫成是切片的底层数组。而切片也可以看作是对数组的某个连续片段的引用。
+
+## 切片扩容
+不会改变原有切片，而是生成一个容量更大的切片，把原有元素和新元素一并拷贝到新切片中。      
+**扩容原则：**
+1. 一般情况下，新容量会是原容量的两倍。       
+2. 如果原长度大于等于1024，将会以原容量的1.25倍为基准。新基准会不断与1.25相乘，直到结果不小于原长度与要追加的元素数量之和。
+3. 如果一次性追加的元素过多，使新长度比原容量的2倍还要大。那么会以新长度为基准。
+
+无需扩容时，append指向的是原底层数组的新切片，扩容时，append指向的新底层数组的新切片。
+因此，切片的底层数组其实是不会被替换的。            
+
+
+
+# interface原理及实现
 
 # proof
 
@@ -944,24 +1250,7 @@ reader/writer 互斥锁
 
 # go怎么做深拷贝
 
-#channel原理及实现
-
-#interface原理及实现
-
-
-#slice和数组
-##切片扩容
-
-
 #sync.Once
-
-
-
-#内存泄露分析
-
-
-
-#进程、线程、协程
 
 
 #waitGroup用法
@@ -973,7 +1262,7 @@ reader/writer 互斥锁
 
 
 
-#协程栈空间大小
+# 协程栈空间大小
 
 #context的使用
 
@@ -987,7 +1276,7 @@ reader/writer 互斥锁
 #压力测试如何实现
 
 
-#golang如何知道或者检测死锁
-
+# golang如何知道或者检测死锁
+自测时可以启动一个goroutine，运行pprof，登录监控界面，查看goroutine的调用栈来定位分析。  
 
 #如何实现只开100个协程
