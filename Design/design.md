@@ -53,7 +53,77 @@ func main() {
 一般分为三类：
 - 简单工厂模式
     - 创建型模式，由一个工厂对象决定创建出哪种产品类型的实例。      
+    示例：     
+```go
+    type SimpleFactoryOfParse interface {
+    	Parse(name string)
+    }
+    
+    type AConfig struct {
+    }
+    
+    type BConfig struct {
+    }
+    
+    func (a AConfig) Parse(name string) {
+    	// TODO 解析逻辑
+    }
+    
+    func (b BConfig) Parse(name string) {
+    	// TODO 解析实际逻辑
+    }
+    
+    func NewConfigParse(name string) SimpleFactoryOfParse {
+    	switch name {
+    	case "json":
+    		return AConfig{}
+    	case "xml":
+    		return BConfig{}
+    	}
+    	return nil
+    }
+    
+```
 - 工厂方法
-- 抽象工厂
+    - 当对象的创建逻辑比较复杂，不是简单new一下，而要组合其他对象，做各种初始化时，使用工厂方法模式。     
+        示例： 
+```go
+    type FactoryMethodOfParse interface {
+    	CreateParser() SimpleFactoryOfParse
+    }
+    
+    type AConfigParseFactory struct {
+    }
+    
+    func (a AConfigParseFactory) CreateParser() SimpleFactoryOfParse {
+    	return AConfig{}
+    }
+    
+    type BConfigParseFactory struct {
+    }
+    
+    func (b BConfigParseFactory) CreateParser() SimpleFactoryOfParse {
+    	return BConfig{}
+    }
+    
+    func NewConfigParserFactory(name string) FactoryMethodOfParse {
+    	switch name {
+    	case "json":
+    		return AConfigParseFactory{}
+    	case "xml":
+    		return BConfigParseFactory{}
+    	}
+    	return nil
+    }
+```    
 
+    
+- 抽象工厂
+    - 为创建一组或相互依赖的对象提供一个接口，而且无需指定他们的具体类。     
+        示例：     
+        抽象工厂：一个车库概率
+        具体工厂： 一个具体的玛莎车库，奔驰车库，奥迪车库
+        抽象产品： 车的概念，包的概念
+        具体产品： 奥迪，阿迪达斯
+        
 

@@ -1236,8 +1236,216 @@ type valueCtx struct {
 因此，切片的底层数组其实是不会被替换的。            
 
 
-
 # interface原理及实现
+类型元数据结构体_type，作为每个类型元数据的header。           
+```go
+    type _type struct {
+    	size       uintptr 
+    	ptrdata    uintptr // size of memory prefix holding all pointers
+    	hash       uint32
+    	tflag      tflag
+    	align      uint8
+    	fieldAlign uint8
+    	kind       uint8
+    	// function for comparing objects of this type
+    	// (ptr to object A, ptr to object B) -> ==?
+    	equal func(unsafe.Pointer, unsafe.Pointer) bool
+    	// gcdata stores the GC type data for the garbage collector.
+    	// If the KindGCProg bit is set in kind, gcdata is a GC program.
+    	// Otherwise it is a ptrmask bitmap. See mbitmap.go for details.
+    	gcdata    *byte
+    	str       nameOff
+    	ptrToThis typeOff
+    }
+```
+自定义类型
+```go
+    type uncommontype struct {
+    	pkgpath nameOff  //类型所在包路径
+    	mcount  uint16 // number of methods  该类型关联方法数量
+    	xcount  uint16 // number of exported methods
+    	moff    uint32 // offset from this uncommontype to [mcount]method 方法元数据数组的偏移量
+    	_       uint32 // unused
+    }
+```
+
+type Mytype = int32 // 这种是为int32起别名，对应的都是int32类型元数据。
+type Mytype int32  // 这种是自定义类型，Mytype
+
+
+**interface有空接口和非空接口两种**   
+## 空接口 interface{}
+空接口可以接收任意类型的数据，只需要记录这个数据在哪，是什么类型的就足够了。
+runtime.eface
+```go
+     type eface struct {
+        	_type *_type // 指向动态类型接口元数据
+        	data  unsafe.Pointer // 指向接口的动态值
+        }
+```
+var e interface{}       
+空接口e在未赋值之前，_type和data都是nil      
+当e被赋值时，data等于赋值的变量，_type指向该变量的类型元数据。
+## 非空接口
+就是有方法的接口
+interface {
+    A()
+    B()
+}
+变量赋值给非空接口类型时，必须实现非空接口的所有方法。
+
+```go
+    type iface struct {
+    	tab  *itab      // 接口方法列表和接口动态类型信息
+    	data unsafe.Pointer // 指向接口的动态值
+    }
+    // layout of Itab known to compilers
+    // allocated in non-garbage-collected memory
+    // Needs to be in sync with
+    // ../cmd/compile/internal/gc/reflect.go:/^func.dumptabs.
+    type itab struct {
+    	inter *interfacetype  // 指向interface的类型元数据
+    	_type *_type    // 指向动态类型元数据
+    	hash  uint32 // copy of _type.hash. Used for type switches. 类型hash值，用于快速判断类型是否相等时使用。
+    	_     [4]byte
+    	fun   [1]uintptr // variable sized. fun[0]==0 means _type does not implement inter. 方法地址
+    }
+    type interfacetype struct {
+    	typ     _type  
+    	pkgpath name       //      
+    	mhdr    []imethod  // 接口方法列表
+    }
+```
+itab结构体是可复用的，go会把用到的itab缓存起来，以接口类型和动态类型组合为key，以itab结构体指针为value，构造一个hash表。
+用于存储和查询itab缓存信息。
+
+需要一个itab时会先到这个hash表中查找，用接口类型的hash值，与动态类型的hash值做异或运算。如果有，就拿来使用，没有的话就创建itab结构体，添加到
+hash表中。
+
+
+# sync.Once
+用来执行且仅执行一次的动作。常用于单例对象初始化。
+once只有一个方法：Do（f func()）
+只有第一次调用f才会被执行。
+
+```go
+    // Once is an object that will perform exactly one action.
+    type Once struct {
+    	// done indicates whether the action has been performed.
+    	// It is first in the struct because it is used in the hot path.
+    	// The hot path is inlined at every call site.
+    	// Placing done first allows more compact instructions on some architectures (amd64/x86),
+    	// and fewer instructions (to calculate offset) on other architectures.
+    	done uint32
+    	m    Mutex
+    }
+```
+使用了 done标识是否已经执行过。
+使用互斥锁保证只有一个goroutine进行初始化。利用双检查机制，保证同时到来的多个goroutine看到的值是1。
+
+## 易出错情况
+- 死锁：
+    once中套once，执行两次do
+    
+- 未初始化
+    
+
+
+
+# waitGroup用法
+主要用于并发-等待问题。
+- Add（delta int）设置计数值
+- Done（）    计数值减一，实际上就是调用了Add(-1)
+- Wait（）  阻塞等待，直到计数器为0
+
+
+## waitgroup实现
+
+- state1 用于记录状态的数组。
+- nocopy
+
+```go
+type WaitGroup struct {
+    // 避免复制使用的一个技巧，可以告诉vet工具违反了复制使用的规则
+    noCopy noCopy
+    // 64bit(8bytes)的值分成两段，高32bit是计数值，低32bit是waiter的计数
+    // 另外32bit是用作信号量的
+    // 因为64bit值的原子操作需要64bit对齐，但是32bit编译器不支持，所以数组中的元素在不同的架构中不一样，具体处理看下面的方法
+    // 总之，会找到对齐的那64bit作为state，其余的32bit做信号量
+    state1 [3]uint32
+}
+
+
+// 得到state的地址和信号量的地址
+func (wg *WaitGroup) state() (statep *uint64, semap *uint32) {
+    if uintptr(unsafe.Pointer(&wg.state1))%8 == 0 {
+        // 如果地址是64bit对齐的，数组前两个元素做state，后一个元素做信号量
+        return (*uint64)(unsafe.Pointer(&wg.state1)), &wg.state1[2]
+    } else {
+        // 如果地址是32bit对齐的，数组后两个元素用来做state，它可以用来做64bit的原子操作，第一个元素32bit用来做信号量
+        return (*uint64)(unsafe.Pointer(&wg.state1[1])), &wg.state1[0]
+    }
+}
+```
+
+Add()，为计数器增加一个delta值。       
+```go
+func (wg *WaitGroup) Add(delta int) {
+    statep, semap := wg.state()
+    // 高32bit是计数值v，所以把delta左移32，增加到计数上
+    state := atomic.AddUint64(statep, uint64(delta)<<32)
+    v := int32(state >> 32) // 当前计数值
+    w := uint32(state) // waiter count
+    if v > 0 || w == 0 {
+        return
+    }
+    // 如果计数值v为0并且waiter的数量w不为0，那么state的值就是waiter的数量
+    // 将waiter的数量设置为0，因为计数值v也是0,所以它们俩的组合*statep直接设置为0即可。此时需要并唤醒所有的waiter
+    *statep = 0
+    for ; w != 0; w-- {
+        runtime_Semrelease(semap, false, 0)
+    }
+}
+// Done方法实际就是计数器减1
+func (wg *WaitGroup) Done() {
+    wg.Add(-1)
+}
+```
+
+Wait(),不断检查state的值，如果变为了0，那么调用者不再等待，直接返回。如果大于0，调用者加入waiter队列并阻塞。       
+```go
+func (wg *WaitGroup) Wait() {
+    statep, semap := wg.state()
+    
+    for {
+        state := atomic.LoadUint64(statep)
+        v := int32(state >> 32) // 当前计数值
+        w := uint32(state) // waiter的数量
+        if v == 0 {
+            // 如果计数值为0, 调用这个方法的goroutine不必再等待，继续执行它后面的逻辑即可
+            return
+        }
+        // 否则把waiter数量加1。期间可能有并发调用Wait的情况，所以最外层使用了一个for循环
+        if atomic.CompareAndSwapUint64(statep, state, state+1) {
+            // 阻塞休眠等待
+            runtime_Semacquire(semap)
+            // 被唤醒，不再阻塞，返回
+            return
+        }
+    }
+}
+```
+
+### waitgroup常见错误
+- 计数器设置为负值
+- done调用过多，超过了计数器的值
+- 调用add之前调用了wait
+- 前一个wait还没结束，就重用waitgroup。
+
+
+# make 和 new的区别
+
+
 
 # proof
 
@@ -1250,10 +1458,7 @@ type valueCtx struct {
 
 # go怎么做深拷贝
 
-#sync.Once
 
-
-#waitGroup用法
 
 #性能问题排查
 
@@ -1277,6 +1482,7 @@ type valueCtx struct {
 
 
 # golang如何知道或者检测死锁
-自测时可以启动一个goroutine，运行pprof，登录监控界面，查看goroutine的调用栈来定位分析。  
+- 自测时可以启动一个goroutine，运行pprof，登录监控界面，查看goroutine的调用栈来定位分析。  
+- 使用 vet工具 go vet xx.go 检查
 
 #如何实现只开100个协程
