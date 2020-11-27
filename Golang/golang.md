@@ -1351,7 +1351,6 @@ once只有一个方法：Do（f func()）
     
 
 
-
 # waitGroup用法
 主要用于并发-等待问题。
 - Add（delta int）设置计数值
@@ -1444,6 +1443,146 @@ func (wg *WaitGroup) Wait() {
 
 
 # make 和 new的区别
+make和new都是内建函数。
+new只接收类型参数，分配好内存后，返回指向该类型内存地址的指针。同时会把分配的内存置为零值。
+make只用于slice，map，chan的内存创建，返回的类型就是他们本身。因为他们本身就是引用类型了。
+
+# 实现一个线程安全的map
+- map的key必须是可比较的，bool、整数、浮点数、复数、字符串、指针、Channel、接口都是可比较的，包含可比较元素的 struct 和数组。
+slice，map，函数值都是不可比较的。
+
+- map是无序的。
+```go
+    package main
+    
+    import (
+    	"fmt"
+    	"sync"
+    )
+    
+    type RwMap struct {
+    	sync.RWMutex
+    	m map[int]int
+    }
+    
+    func newRwMap(n int) *RwMap {
+    	return &RwMap{m: make(map[int]int, n)}
+    }
+    
+    func (rm *RwMap) Get(key int) (value int, exist bool) {
+    	rm.RLock()
+    	defer rm.RUnlock()
+    	value, exist = rm.m[key]
+    	return
+    }
+    
+    func (rm *RwMap) Set(key, value int) {
+    	rm.Lock()
+    	defer rm.Unlock()
+    	rm.m[key] = value
+    }
+    
+    func (rm *RwMap) Delete(key int) {
+    	rm.Lock()
+    	defer rm.Unlock()
+    	delete(rm.m, key)
+    }
+    
+    func (rm *RwMap) Len() int {
+    	rm.RLock()
+    	defer rm.RUnlock()
+    	return len(rm.m)
+    }
+    
+    func (rm *RwMap) Each(f func(k, v int) bool) {
+    	rm.RLock()
+    	defer rm.RUnlock()
+    	for k, v := range rm.m {
+    		if !f(k, v) {
+    			return
+    		}
+    	}
+    }
+    
+    func main() {
+    	m := newRwMap(5)
+    	m.Set(1, 1)
+    	m.Set(2, 2)
+    	m.Set(3, 3)
+    	m.Set(4, 4)
+    	m.Set(5, 5)
+    
+    	fmt.Println(m.Len())
+    	t := make(map[int]int,5)
+    	m.Each(func(k, v int) bool {
+    		t[k] =v
+    		return true
+    	})
+    	fmt.Println(t)
+    }
+
+```
+
+## map常见使用错误
+- 未初始化
+- 并发读写
+
+## 官方sync.Map是线程安全的。
+适用场景
+- 只一次写，多次读的并发场景。
+
+# copy
+从源切片复制到目标切片。
+一个特殊情况是，也可以从一个字符串中拷贝字节到字节切片中。
+
+```go
+    package main
+    
+    import "fmt"
+    
+    func main() {
+    	s := "hello world"
+    	b := make([]byte, 11)
+    	copy(b, s)
+    	fmt.Println(string(b))
+    }
+
+```
+
+# go怎么做深拷贝
+## 浅拷贝
+创建一个新对象，这个对象有着原始对象属性值的一份精确拷贝，如果属性是基本类型，拷贝的就是基本类型的值。         
+如果属性是引用类型，拷贝的就是内存地址。如果其中一个对象改变了这个地址，就会影响另一个对象。      
+
+## 深拷贝          
+将一个对象从内存中完整的拷贝出来一份，从堆内存中开辟一个新的区域存放对象，且修改新对象不会影响原对象。         
+
+slice扩容时就是做的深拷贝。
+
+
+# 协程栈空间大小
+栈空间的演变：     
+v1.0 ~ v1.1 — 最小栈内存空间为 4KB；         
+v1.2 — 将最小栈内存提升到了 8KB；              
+v1.3 — 使用连续栈替换之前版本的分段栈；             
+v1.4 — 将最小栈内存降低到了 2KB；                  
+
+给goroutine初始堆栈大小为2Kb，随着程序运行使用而增加。  
+最大值32位设置为250Mb,64位最大为1Gb，由主goroutine G0设置。        
+
+
+# golang如何知道或者检测死锁
+- 自测时可以启动一个goroutine，运行pprof，登录监控界面，查看goroutine的调用栈来定位分析。  
+- 使用 vet工具 go vet xx.go 检查
+
+
+# 如何实现只开100个协程
+sync.waitGroup
+或者channel
+
+
+# reflect
+通过反射可以获得对象的类型和对象的值。
 
 
 
@@ -1453,36 +1592,14 @@ func (wg *WaitGroup) Wait() {
 
 # 编码规范
 
-
-# copy
-
-# go怎么做深拷贝
+# context的使用
 
 
+# go mod命令
 
-#性能问题排查
+# 协程交叉打印数组
 
+# 性能问题排查
 
-#reflect
+# 压力测试如何实现
 
-
-
-# 协程栈空间大小
-
-#context的使用
-
-
-#go mod命令
-
-#协程交叉打印数组
-
-
-
-#压力测试如何实现
-
-
-# golang如何知道或者检测死锁
-- 自测时可以启动一个goroutine，运行pprof，登录监控界面，查看goroutine的调用栈来定位分析。  
-- 使用 vet工具 go vet xx.go 检查
-
-#如何实现只开100个协程

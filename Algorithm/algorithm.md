@@ -561,6 +561,168 @@ bfs递归
 ```
 
 
+# 买卖股票全家桶
+## 121 买卖股票的最佳时机
+给定一个数组，它的第 i 个元素是一支给定股票第 i 天的价格。
+如果你最多只允许完成一笔交易（即买入和卖出一支股票一次），设计一个算法来计算你所能获取的最大利润。
+注意：你不能在买入股票前卖出股票。
+
+定义两个变量，一个存当前最小值，一个记录当前最大利润。
+如果当前值比最小值小，就赋值给最小值变量。如果比最小值大，就检查是否比当前最大利润大。如果比最大利润大，就赋值给最大利润变量。返回最大利润。
+
+时间复杂度 O(N)
+```go
+    func maxProfit(prices []int) int {
+        if len(prices) < 2 {
+            return 0
+        }
+        maxP, min := 0, prices[0]
+        for i := range prices {
+            if prices[i] < min {
+                min = prices[i]
+            }else if prices[i] - min > maxP {
+                maxP = prices[i] - min
+            }
+        } 
+        return maxP
+    }
+```
+
+## 122 买卖股票的最佳时机2
+允许多次买卖，但再买之前必须先卖掉手上的。
+
+给定一个数组，它的第 i 个元素是一支给定股票第 i 天的价格。        
+设计一个算法来计算你所能获取的最大利润。你可以尽可能地完成更多的交易（多次买卖一支股票）。       
+注意：你不能同时参与多笔交易（你必须在再次购买前出售掉之前的股票）。          
+
+方法一：
+一次遍历法。
+时间复杂度O(n)
+```go
+    func maxProfit(prices []int) int {
+        // 定义利润和，只要当天比前一天有利润，就计入利润。
+        if len(prices) < 2 {
+            return 0
+        }
+        maxP := 0
+        for i := 1; i < len(prices); i++ {
+            if prices[i] > prices[i-1] {
+                maxP += prices[i]-prices[i-1]
+            }
+        }
+        return maxP
+    }
+```
+
+方法二：
+动态规划
+
+```go
+    func maxProfit(prices []int) int {
+        // 定义状态
+        // dp[i][0] = 第i天手上没有股票最大利润
+        //  dp[i][0] 有两种情况：
+        //    前一天手里也没有：
+        //    前一天手里有，今天卖  
+        //    dp[i][0] = max(dp[i-1][0], dp[i-1][1] + prices[i])    
+        // dp[i][1] = 第i天手上有股票最大利润
+        //    前一天手上没有股票，今天买：dp[i-1][0] - prices[i]
+        //    前一天手头上有股票，今天没买： dp[i-1][1]
+        //    dp[i][1] = max(dp[i-1][1], dp[i-1][0] - prices[i])
+        // 最终就是求 dp[i][0] 和dp[i][1]的大小
+        // 肯定0 大
+        // 为了减少空间，使用两个变量标识即可
+         l := len(prices)
+        if l < 2 {
+            return 0
+        }
+        hold, unhold := -prices[0], 0
+        for i := 1; i < l; i++{
+            hold = max(unhold-prices[i], hold)
+            unhold = max(hold+prices[i], unhold)
+        }
+        return unhold
+    }
+    
+    func max(a, b int) int {
+        if a > b {
+            return a
+        }
+        return b
+    }
+```
+
+##  309 买卖股票的最佳时机含冷冻期
+给定一个整数数组，其中第 i 个元素代表了第 i 天的股票价格 。​
+设计一个算法计算出最大利润。在满足以下约束条件下，你可以尽可能地完成更多的交易（多次买卖一支股票）:
+你不能同时参与多笔交易（你必须在再次购买前出售掉之前的股票）。
+卖出股票后，你无法在第二天买入股票 (即冷冻期为 1 天)。
+
+动态规划方程
+```go
+    func maxProfit(prices []int) int {
+        // dp[i][s]
+        // 状态分为：持有股票非冷冻；无股票冷冻；无股票非冷冻
+        //dp[i][0]; dp[i][1];dp[i][2]
+        l := len(prices)
+        if l < 2 {
+            return 0
+        }
+        holdno, unholdyes, unholdno := -prices[0], 0, 0
+        for i := 1; i < l; i++ {
+            new1 := max(unholdno-prices[i], holdno)
+            new2 := holdno+prices[i]
+            new3 := max(unholdno, unholdyes)
+            holdno, unholdyes, unholdno = new1, new2, new3
+        }
+        return max(unholdyes,unholdno)
+    }
+    
+    
+    func max(a,b int) int {
+        if a > b {
+            return a
+        }
+        return b
+    }
+```
+
+## 714 买卖股票最佳时机含手续费
+给定一个整数数组 prices，其中第 i 个元素代表了第 i 天的股票价格 ；非负整数 fee 代表了交易股票的手续费用。
+你可以无限次地完成交易，但是你每笔交易都需要付手续费。如果你已经购买了一个股票，在卖出它之前你就不能再继续购买股票了。
+返回获得利润的最大值。
+注意：这里的一笔交易指买入持有并卖出股票的整个过程，每笔交易你只需要为支付一次手续费。
+
+动态规划
+
+```go
+    func maxProfit(prices []int, fee int) int {
+        // dp[i][0] 最大利润没有股票
+        //  max(dp[i-1][1]+prices[i],dp[i-1][0])
+        // dp[i][1] 最大利润有股票
+        //  max(dp[i-1][0]-prices[i],dp[i-1][1])
+        l := len(prices)
+        if l < 2 {
+            return 0
+        }
+        hold, unhold := -prices[0], 0
+        for i := 1; i < l; i++ {
+            hold = max(unhold - prices[i], hold)
+            unhold = max(hold+prices[i]-fee, unhold)
+        }
+        return unhold
+    }
+    
+    func max(a,b int) int{
+        if a > b {
+            return a
+        }
+        return b
+    }
+```
+
+
+
 ## 51 数组中的逆序对
 
 ##判断是否是平衡二叉树
@@ -570,8 +732,8 @@ bfs递归
 
 
 
-#数组
-##旋转数组最小数字
+# 数组
+## 旋转数组最小数字
 ##二维数组中的查找
 
 
