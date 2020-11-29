@@ -1583,23 +1583,23 @@ sync.waitGroup
 # go mod命令
 go mod init xxx项目 新建go.mod文件            
 go list -m all 查看当前模块及其所有依赖项。       
-go list -m -versions 包名 该包的可用版本
+go list -m -versions 包名 该包的可用版本             
 go.sum 文件中包含了依赖项的特殊哈希值加密，来确保这些依赖项在将来下载时，与第一次下载的一致，确保项目依赖的模块不会被恶意或非预期的修改。            
 
 go.mod文件中的 indirect标识表示一个依赖项不被该项目直接使用是其他模块的间接依赖。                
 可以为每个不同的主要版本使用不同的模块路径 如：xx/xx/v1   xx/xx/v2             
-使用 go mod tidy 清除未使用的依赖项。       
+使用 go mod tidy 清除未使用的依赖项。                   
 
 
-- go mod init创建一个新模块，初始化go.mod描述它的文件。
-- go build，go test以及其他软件包构建命令go.mod根据需要添加新的依赖项。
-- go list -m all 打印当前模块的依赖关系。
-- go get 更改所需的依赖版本（或添加新的依赖）。
-- go mod tidy 删除未使用的依赖项。
+- go mod init创建一个新模块，初始化go.mod描述它的文件。                   
+- go build，go test以及其他软件包构建命令go.mod根据需要添加新的依赖项。                 
+- go list -m all 打印当前模块的依赖关系。                       
+- go get 更改所需的依赖版本（或添加新的依赖）。                    
+- go mod tidy 删除未使用的依赖项。                    
 
 
 # reflect
-通过反射可以获得对象的类型和对象的值。
+通过反射可以获得对象的类型和对象的值。             
 
 
 

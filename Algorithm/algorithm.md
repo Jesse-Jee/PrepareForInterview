@@ -721,14 +721,70 @@ bfs递归
     }
 ```
 
+# 226 翻转二叉树
+方法一：递归       
+时间复杂度O(N)
+空间复杂度O(N)   
+```go
+    /**
+     * Definition for a binary tree node.
+     * type TreeNode struct {
+     *     Val int
+     *     Left *TreeNode
+     *     Right *TreeNode
+     * }
+     */
+    func invertTree(root *TreeNode) *TreeNode {
+        if root == nil {
+            return root
+        } 
+        left := invertTree(root.Left)
+        right := invertTree(root.Right)
+        root.Right = left
+        root.Left = right
+        return root
+    }
+```
+
+方法二：迭代          
+时间复杂度O(N)
+空间复杂度O(N) 
+```go
+    /**
+     * Definition for a binary tree node.
+     * type TreeNode struct {
+     *     Val int
+     *     Left *TreeNode
+     *     Right *TreeNode
+     * }
+     */
+    func invertTree(root *TreeNode) *TreeNode {
+        if root == nil {
+            return root
+        } 
+        q :=[]*TreeNode{root}
+    
+        for len(q) > 0 {
+            node := q[0]
+            q = q[1:]
+            node.Left, node.Right = node.Right, node.Left
+            if node.Left != nil {
+                q = append(q,node.Left)
+            }
+            if node.Right != nil {
+                q = append(q, node.Right)
+            }
+        }
+        return root
+    }
+```
 
 
-## 51 数组中的逆序对
 
-##判断是否是平衡二叉树
+## 判断是否是平衡二叉树
 
-##旋转二叉树
-##二叉树前序遍历
+## 旋转二叉树
+## 二叉树前序遍历
 
 
 
@@ -773,8 +829,6 @@ bfs递归
 
 
 #链表两数相加
-
-#股票买卖全家桶
 
 #爬楼梯全家桶
 
