@@ -4,9 +4,6 @@
 # 场景 服务端大文件，http多线程下载
 
 
-# etcd的raft一致性算法
-
-
 
 # error 处理
 pkg/errors
