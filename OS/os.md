@@ -333,10 +333,10 @@ epoll_ctl用于添加或删除fd对应的事件信息。
 
 
 ## select/poll/epoll区别
-数据结构： bitmap, 数组， 红黑树
-支持的最大连接数：1024， 无上限，无上限
-工作效率：轮询O（N），轮询O（N），回调O（1）
-fd拷贝： 每次调用select拷贝，每次调用poll拷贝，fd首次调用epoll_ctl拷贝 每次调用epoll_wait不拷贝。
+数据结构： bitmap, 数组， 红黑树        
+支持的最大连接数：1024， 无上限，无上限         
+工作效率：轮询O（N），轮询O（N），回调O（1）           
+fd拷贝： 每次调用select拷贝，每次调用poll拷贝，fd首次调用epoll_ctl拷贝 每次调用epoll_wait不拷贝。           
 
 
 # Linux下硬链接和软链接的区别
