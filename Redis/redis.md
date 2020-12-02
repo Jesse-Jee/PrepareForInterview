@@ -19,6 +19,20 @@
 - Hyperloglog 用于统计基数
 - GEO 基于位置信息服务的应用，附近的餐馆等。
 
+压缩列表的结构：                
+
+|zlbytes列表长度|zltail列表尾偏移量|zllen列表entry个数|entry1|...|entryN|zlend列表结束|
+|---|---|---|---|---|---|---|
+
+entry结构
+
+
+|prev_len前一个entry长度，小于254字节就是1字节，大于就是5字节|encoding编码方式1字节|len自身长度4字节|content实际数据|
+|---|---|---|---|
+
+
+
+
 ## string
 ### 使用
 set key value  
@@ -30,6 +44,19 @@ INCRBY key increment 递增指定数字
 DECR key 递减数字   
 DECRBY key increment 递减指定数字  
 strlen key 获取字符串长度
+
+### 底层结构
+SDS simple dynamic string
+
+|len(4B)|
+|:---:|  
+|alloc(4B)|
+|buf("redis\0")|       
+
+- buf 字节数组，保存数据，为了表示结束，会在数组后面加"\0",会额外占1个字节的开销。
+- len 4字节，表示buf实际长度
+- alloc 4字节，表示实际分配长度，一般大于len。
+
 
 ### 分布式锁
 setnx key value   
