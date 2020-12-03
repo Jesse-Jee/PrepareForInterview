@@ -172,7 +172,11 @@ api-interface 可以称为是BFF，是一种适配服务。将后端微服务进
 用于检查服务提供者健康，以便异常时被摘除，或恢复后重新加入。      
 也可用于平滑发布        
 
-
+## gRPC与restful区别
+- gRPC 使用的是HTTP2协议(快)，rest使用HTTP1.1比较多（慢）。               
+- gRPC 使用protobuf协议二进制数据传输，rest使用json等。               
+- gRPC 使用双向流。
+- 都支持tls/ssl加密  
  
 # 服务发现
 ## 客户端发现
@@ -283,6 +287,27 @@ CAP原则指的是三个原则最多同时实现两点，三者不可兼顾。
 5. 无数个标签，就像是无数套测试环境。        
 
 
+# 限流
+- Nginx方式
+    限制单个IP每秒访问次数，如50次。              
+    实现方式：   
+     - 配置nginx.conf                 
+      修改limit_req_zone$binary_remote_addr $uri zone=api_read:20m rate=50r/s                 
+      一旦超过并发数，将返回503错误给客户端。                     
+
+- go-micro方式      
+    - micro.WrapClient 包装客户端
+    - micro.WrapServer 保证服务端
+    
+    使用uber limiter插件通过
+```go
+    QPS := 100
+    micro.WrapHandler(limiter.NewHandlerWrapper(QPS)),    
+```
+    
+    
+    
+    
 # 微服务治理
 
 # 链路追踪

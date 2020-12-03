@@ -73,6 +73,33 @@ base64中有三个字符：+、/、= 在base64URL中，=被忽略，+被替换�
 - 建议使用HTTPS传输。          
 
 
+# go-micro限流方式     
+- micro.WrapClient 包装客户端
+- micro.WrapServer 保证服务端
+    
+使用uber limiter插件通过
+```go
+    QPS := 100
+    micro.WrapHandler(limiter.NewHandlerWrapper(QPS)),    
+```
+
+# go-micro注册的实现
+- registry
+    - etcdRegistry
+```go
+    type etcdRegistry struct {
+    	client  *clientv3.Client
+    	options registry.Options
+    
+    	// register and leases are grouped by domain
+    	sync.RWMutex
+    	register map[string]register
+    	leases   map[string]leases
+    }
+```    
+
+
+
         
 
 # grpc框架
@@ -81,7 +108,5 @@ base64中有三个字符：+、/、= 在base64URL中，=被忽略，+被替换�
 
 # grpc过程简介
 
-
-# RPC和restful的区别
 
 

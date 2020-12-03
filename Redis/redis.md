@@ -62,9 +62,13 @@ SDS simple dynamic string
 setnx key value   
 set key value [EX seconds][PX milliseconds][NX|XX]  
 **EX**:key 存在多少秒后过期     
-**PX**：key在多少毫秒后过期
-**NX**：当key不存在是才能创建key 效果等同于setnx
+**PX**：key在多少毫秒后过期                      
+**NX**：当key不存在是才能创建key 效果等同于setnx                   
 **XX**：当key存在是覆盖key
+
+实例化场景：              
+Redis开发者提出分布式锁RedLock算法          
+
 
 ### 应用场景
 - 商品编号、订单号采用INCR生成
