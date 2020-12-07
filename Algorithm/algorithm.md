@@ -781,7 +781,188 @@ bfs递归
 
 
 
+# 爬楼梯全家桶
+## 70 爬楼梯
+假设你正在爬楼梯。需要 n 阶你才能到达楼顶。                 
+每次你可以爬 1 或 2 个台阶。你有多少种不同的方法可以爬到楼顶呢？                 
+注意：给定 n 是一个正整数。                 
+
+时间复杂度O(N)
+```go
+func climbStairs(n int) int {
+    p, q, r := 0,0,1
+
+    for i := 1; i <= n; i++ {
+           p = q
+           q = r
+           r = p + q
+    }
+
+    return r
+    
+}
+```
+
+## 746 使用最小花费爬楼梯
+数组的每个索引作为一个阶梯，第 i个阶梯对应着一个非负数的体力花费值 cost[i](索引从0开始)。                 
+每当你爬上一个阶梯你都要花费对应的体力花费值，然后你可以选择继续爬一个阶梯或者爬两个阶梯。                   
+您需要找到达到楼层顶部的最低花费。在开始时，你可以选择从索引为 0 或 1 的元素作为初始阶梯。                
+
+时间复杂度O(N)
+```go
+func minCostClimbingStairs(cost []int) int {  
+    for i := len(cost)-3; i >= 0; i-- {
+        cost[i] += min(cost[i+1], cost[i+2])
+    }
+    return min(cost[0],cost[1])
+}
+func min(a,b int) int {
+    if a < b {
+        return a
+    }
+    return b
+}
+```
+
+# 2 两数相加
+给出两个 非空 的链表用来表示两个非负的整数。其中，它们各自的位数是按照 逆序 的方式存储的，并且它们的每个节点只能存储一位数字。               
+如果，我们将这两个数相加起来，则会返回一个新的链表来表示它们的和。                   
+您可以假设除了数字 0 之外，这两个数都不会以 0 开头。                   
+
+时间复杂度O(N)               
+```go
+    /**
+     * Definition for singly-linked list.
+     * type ListNode struct {
+     *     Val int
+     *     Next *ListNode
+     * }
+     */
+    func addTwoNumbers(l1 *ListNode, l2 *ListNode) *ListNode {
+        var result *ListNode
+        var tmp *ListNode
+        var c int
+    
+        for l1 != nil || l2 != nil {
+            n1, n2 := 0, 0
+    
+            if l1 != nil {
+                n1 = l1.Val
+                l1 = l1.Next
+            }
+    
+            if l2 != nil {
+                n2 = l2.Val
+                l2 = l2.Next
+            }
+    
+            sum := n1 + n2+ c
+            sum, c = sum%10, sum/10
+    
+            if result == nil {
+                result = &ListNode{Val:sum}
+                tmp = result
+            }else {
+                tmp.Next = &ListNode{Val:sum}
+                tmp = tmp.Next
+            }
+        }
+        if c > 0 {
+            tmp.Next = &ListNode{Val:c}
+        }
+    
+        return result
+    }
+```
+
+# 剑指offer 55-I 二叉树的高度
+输入一棵二叉树的根节点，求该树的深度。从根节点到叶节点依次经过的节点（含根、叶节点）形成树的一条路径，最长路径的长度为树的深度。
+
+迭代方式
+时间复杂度O(N)
+```go
+    func maxDepth(root *TreeNode) int {
+        if root == nil{
+            return 0
+        }
+       var max int
+       q := []*TreeNode{root}
+    
+       for len(q) > 0 {
+           p := []*TreeNode{}
+           max++
+            for i := 0; i < len(q);i++{
+                if q[i].Left != nil {
+                    p = append(p, q[i].Left)
+                }
+                if q[i].Right != nil {
+                    p = append(p, q[i].Right)
+                }
+            }
+            q = p
+       } 
+    
+        return max
+    }
+```
+
+递归方式：
+```go
+var max int
+func maxDepth(root *TreeNode) int {
+    max = 0
+    dfs(root, 0)
+    return max
+
+}
+func dfs(root *TreeNode, level int) {
+    if root == nil {
+         if level > max {
+                max=level
+        }
+        return
+    }
+   
+
+    dfs(root.Left, level+1)
+    dfs(root.Right,level+1)
+}
+```
+
+# 100相同的树
+给定两个二叉树，编写一个函数来检验它们是否相同。                
+如果两个树在结构上相同，并且节点具有相同的值，则认为它们是相同的。               
+
+
+时间复杂度O(min(m,n))
+
+```go
+/**
+ * Definition for a binary tree node.
+ * type TreeNode struct {
+ *     Val int
+ *     Left *TreeNode
+ *     Right *TreeNode
+ * }
+ */
+func isSameTree(p *TreeNode, q *TreeNode) bool {
+    if p == nil && q == nil {
+        return true
+    }
+    if p == nil || q == nil {
+        return  false
+    }
+    if p.Val != q.Val {
+        return false
+    }
+    return isSameTree(p.Left, q.Left) && isSameTree(p.Right, q.Right)
+}
+```
+
 ## 判断是否是平衡二叉树
+
+
+
 
 ## 旋转二叉树
 ## 二叉树前序遍历
@@ -790,7 +971,7 @@ bfs递归
 
 # 数组
 ## 旋转数组最小数字
-##二维数组中的查找
+## 二维数组中的查找
 
 
 
@@ -813,8 +994,6 @@ bfs递归
 #方程求根
 
 
-#剑指offer，leetcode hot100
-
 #leetcode 105  128  125
 
 #原地链表排序
@@ -828,20 +1007,12 @@ bfs递归
 
 
 
-#链表两数相加
 
-#爬楼梯全家桶
+
 
 #令牌桶算法
 
-#堆排序
-
-
-# 快排
-
-# 归并排序
-
-# 选择排序
+# 堆排序
 
 
 
@@ -887,8 +1058,8 @@ bfs递归
 
 #二叉树中是否存在一条路径和等于给定值
 
-#如何判定两棵树是相同的
-#二叉树的高度
+# 判定两棵树是相同的
+
 
 
 #10亿数据内存够用的情况下，选取前100
