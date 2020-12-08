@@ -959,6 +959,102 @@ func isSameTree(p *TreeNode, q *TreeNode) bool {
 }
 ```
 
+# 实现LRU
+```go
+    package main
+    
+    /**
+     * lru design
+     * @param operators int整型二维数组 the ops
+     * @param k int整型 the k
+     * @return int整型一维数组
+    */
+    
+    type LinkNode struct {
+        key, value int
+        prev, next *LinkNode
+    }
+    
+    type LRUCache struct {
+        Cap int
+        data map[int]*LinkNode
+        head, tail *LinkNode
+        
+    }
+    
+    func Constructor(capcity int) LRUCache {
+        head := &LinkNode{-1,-1,nil,nil}
+        tail := &LinkNode{-1,-1,nil,nil}
+        head.next = tail
+        tail.prev = head
+        return LRUCache{Cap: capcity, data: make(map[int]*LinkNode),head: head,tail: tail}
+    }
+    
+    func (l *LRUCache) AddNode(node *LinkNode){
+        node.prev = l.head
+        node.next = l.head.next
+        l.head.next = node
+        node.next.prev = node
+    }
+    
+    func (l *LRUCache) RemoveNode(node *LinkNode) {
+        node.prev.next = node.next
+        node.next.prev = node.prev
+    }
+    
+    func (l *LRUCache) MoveToHead(node *LinkNode) {
+        l.RemoveNode(node)
+        l.AddNode(node)
+    }
+    
+    
+    func (l *LRUCache) Set(key, value int) {
+        d := l.data
+        if node, ok := d[key]; ok{
+            node.value = value
+            l.MoveToHead(node)
+        } else {
+            newNode := &LinkNode{key: key,value: value, prev: nil, next: nil}
+            if len(d) >= l.Cap {
+                delete(d, l.tail.prev.key)
+                l.RemoveNode(l.tail.prev)
+            }
+            d[key] = newNode
+            l.AddNode(newNode)
+        }
+    }
+    
+    func (l *LRUCache) Get(key int) int {
+        d := l.data
+        if _,ok := d[key]; !ok {
+            return -1
+        }
+        node := d[key]
+        l.MoveToHead(node)
+        return node.value
+    }
+    
+    
+    
+    func LRU( operators [][]int ,  k int ) []int {
+        // write code here
+        lru := Constructor(k)
+        result := make([]int, 0)
+        for i := 0; i < len(operators); i++ {
+            operator := operators[i]
+            if operator[0] ==  1 {
+               lru.Set(operator[1],operator[2])
+            }else if operator[0] == 2 {
+                result = append(result, lru.Get(operator[1]))
+            }
+        }
+        
+        return result
+        
+    }
+```
+
+
 ## 判断是否是平衡二叉树
 
 
