@@ -1054,6 +1054,117 @@ func isSameTree(p *TreeNode, q *TreeNode) bool {
     }
 ```
 
+# 剑指offer04二维数组中的查找
+在一个 n * m 的二维数组中，每一行都按照从左到右递增的顺序排序，每一列都按照从上到下递增的顺序排序。                   
+请完成一个高效的函数，输入这样的一个二维数组和一个整数，判断数组中是否含有该整数。                   
+
+时间复杂度O(m+n)
+空间复杂度O(1)
+
+````go
+func findNumberIn2DArray(matrix [][]int, target int) bool {
+    m := len(matrix)
+    if m < 1 {
+        return false
+    }
+    n := len(matrix[0])
+    row, col := 0, n-1
+
+    for row < m && col >= 0 {
+        num := matrix[row][col]
+        if num == target {
+            return true
+        }else if num > target {
+            col--
+        }else {
+            row++
+        }
+    }
+    return false
+}
+````
+
+# 剑指offer06 从尾到头打印链表
+输入一个链表的头节点，从尾到头反过来返回每个节点的值（用数组返回）。                  
+```go
+/**
+ * Definition for singly-linked list.
+ * type ListNode struct {
+ *     Val int
+ *     Next *ListNode
+ * }
+ */
+func reversePrint(head *ListNode) []int {
+    if head == nil {
+        return nil
+    }
+    r := make([]int, 0)
+    for head != nil {
+        r = append(r, head.Val)
+        head = head.Next
+    }
+    start, end := 0, len(r)-1
+
+    for start < end {
+        r[start], r[end] = r[end], r[start]
+        start++
+        end--
+    }
+
+    return r
+}
+```
+
+# 剑指offer05替换空格
+请实现一个函数，把字符串 s 中的每个空格替换成"%20"。                  
+```go
+func replaceSpace(s string) string {
+    if s == "" {
+        return s
+    }
+    result := make([]byte, 0)
+    for i := range s {
+        if s[i] == ' ' {
+            result = append(result, []byte{'%','2','0'}...)    
+        }else {
+            result = append(result, s[i])
+        }
+    }
+    return string(result)
+}
+```
+
+# 剑指offer28对称的二叉树
+请实现一个函数，用来判断一棵二叉树是不是对称的。如果一棵二叉树和它的镜像一样，那么它是对称的。                 
+````go
+/**
+ * Definition for a binary tree node.
+ * type TreeNode struct {
+ *     Val int
+ *     Left *TreeNode
+ *     Right *TreeNode
+ * }
+ */
+func isSymmetric(root *TreeNode) bool {
+     if root == nil {
+         return true
+     }
+     return bfs(root.Left, root.Right)
+}
+
+func bfs(a, b *TreeNode) bool {
+    if a == nil && b == nil {
+        return true
+    }
+
+    if (a == nil || b == nil) || (a.Val != b.Val) {
+        return false
+    }
+
+    return bfs(a.Left, b.Right) && bfs(a.Right, b.Left)
+}   
+````
+
 
 ## 判断是否是平衡二叉树
 
@@ -1098,22 +1209,8 @@ func isSameTree(p *TreeNode, q *TreeNode) bool {
 #编辑距离
 
 
-
-
-
-
-
-
-
-
-#令牌桶算法
-
 # 堆排序
 
-
-
-
-# 实现一个LRU
 
 
 #一个长度为N的数组，里面的元素值在1-N之间（闭区间），找出重复元素。要求时间复杂度O（N），空间复杂度O（1）
