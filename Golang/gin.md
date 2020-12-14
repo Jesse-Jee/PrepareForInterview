@@ -27,10 +27,45 @@ gin.Default()返回一个engine对象，engine对象继承自routergroup。
 
 
 handle方法，传入HTTP方法，相对路径，handles调用链。      
-添加URI时，会找到方法对应的method tress添加进去。如果树是空的就初始化一个树。
+添加URI时，会找到方法对应的method trees添加进去。如果树是空的就初始化一个树。
 addRoute不是并发安全的。        
 
-路由实际上是前缀树。
+node中包含了路径信息，它的类型信息等等。                      
+
+````go
+const (
+	static nodeType = iota // default
+	root
+	param
+	catchAll
+)
+
+type node struct {
+	path      string
+	indices   string
+	wildChild bool
+	nType     nodeType
+	priority  uint32
+	children  []*node
+	handlers  HandlersChain
+	fullPath  string
+}
+````
+
+
+
+
+## radix-tree举例
+1 romane                
+2 romanus               
+3 romulus               
+4 rubens                
+5 ruber                 
+6 rubicon                   
+7 rubicundus                    
+
+![Image_text](https://raw.githubusercontent.com/Jesse-Jee/PrepareForInterview/master/Picture/radix-tree.png)
+
 
 
 
