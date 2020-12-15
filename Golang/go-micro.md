@@ -14,6 +14,55 @@
 - Store: 具有TTL过期和持久化存储的键值存储，可保持微服务无状态。
 
 # 各组件原理
+- Registry                 
+为服务发现提供了一个接口，和在不同实现上的抽象。                
+```go
+    type Registry interface {
+    	Init(...Option) error
+    	Options() Options
+    	Register(*Service, ...RegisterOption) error
+    	Deregister(*Service, ...DeregisterOption) error
+    	GetService(string, ...GetOption) ([]*Service, error)
+    	ListServices(...ListOption) ([]*Service, error)
+    	Watch(...WatchOption) (Watcher, error)
+    	String() string
+    }
+```
+
+把注册信息，编码成protobuf并将TTL和domain打包其中，一些补充信息可以放到register options中的context中传递下去，执行注册。                 
+
+```go
+func (s *srv) Register(srv *registry.Service, opts ...registry.RegisterOption) error {
+	var options registry.RegisterOptions
+	for _, o := range opts {
+		o(&options)
+	}
+
+	// encode srv into protobuf and pack TTL and domain into it
+	pbSrv := util.ToProto(srv)
+	pbSrv.Options.Ttl = int64(options.TTL.Seconds())
+	pbSrv.Options.Domain = options.Domain
+
+	// register the service
+	_, err := s.client.Register(context.DefaultContext, pbSrv, s.callOpts()...)
+	return err
+}
+```
+
+摘除服务与注册服务类似。                         
+
+使用Watcher,获取注册中心中有关服务的更新。                       
+```go
+type Watcher interface {
+	// Next is a blocking call
+	Next() (*Result, error)
+	Stop()
+}
+```
+
+- Config        
+动态配置的接口抽象                                       
+提供了GET，SET，DELETE等接口方法。                 
 
 # 如何实践
 
@@ -83,6 +132,10 @@ base64中有三个字符：+、/、= 在base64URL中，=被忽略，+被替换�
     micro.WrapHandler(limiter.NewHandlerWrapper(QPS)),    
 ```
 
+wraaper是装饰器模式                       
+
+
+
 # go-micro注册的实现
 - registry
     - etcdRegistry
@@ -98,8 +151,25 @@ base64中有三个字符：+、/、= 在base64URL中，=被忽略，+被替换�
     }
 ```    
 
+# APP服务名称如何传入
+1. micro.Name(name) 自定义
+2. ENV环境变量
+3. CLI命令行 go run xx.go --server_name=自定义                     
+
+同时声明的话，1<2<3                            
 
 
+# go-micro如何实现插件化
+为每个组件强定义了接口。                
+- Init(...Option) error
+- Options() Options
+- String() string
+...                     
+
+go-micro所有官方插件都在go-plugins库中。                   
+
+# 路由要挂载在对应的命名空间上                    
+micro-api 路由映射与服务名字强关联。             
         
 
 # grpc框架
