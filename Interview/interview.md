@@ -56,6 +56,98 @@
 - docker的隔离如何实现的？               
     使用linux namespace                   
     
+- sync.Map的使用
+  多线程从map中获取某个key值，返回bool。                      
+  var m sync.Map
+  if _, ok := m.Load(key);ok {
+        return key
+  }
+  
+  如何保存一个key                                         
+  m.Store(key, value)                   
+  
+  如何查询一个value？                  
+  m.LoadOrStore(key, value)                         
+  如果key存在，就返回value，如果不存在，就保存并返回value。                           
+  
+   
+- gorm的使用
+    更新一堆字段？                     
+    updates方法                       
+    如何执行事务？                     
+    db.Transaction()                                    
+    支持手动事务                              
+    tx := db.Begin()                
+    tx.Create()...                              
+    tx.Commit()...              
+    
+    
+- 实现一个server，8080端口启动，返回指定json。             
+```go
+func main() {
+	r := gin.Default()
+	r.GET("/user", func(context *gin.Context) {
+		context.JSON(200, "hello world")
+	})
+	r.Run()
+}
+```    
+
+- 几个json,如何设计结构体？                           
+{name,pwd}
+{name,pwd,info}                         
+{name,pwd,info,moreInfo}                
+
+```go
+type User struct {
+	Name string `json:"name"`
+	Pwd  string `json:"pwd"`
+}
+
+type UserInfo struct {
+	User
+	Info string `json:"info"`
+}
+
+type UserMore struct {
+	UserInfo
+	More string `json:"more"`
+}
+
+func main() {
+	var u = User{Name: "1", Pwd: "1"}
+	strU, _ := json.Marshal(u)
+	fmt.Println(string(strU))
+
+	var ui = UserInfo{u, "2"}
+	strU1, _ := json.Marshal(ui)
+	fmt.Println(string(strU1))
+
+	var um = UserMore{ui,"3"}
+	strUm, _ := json.Marshal(um)
+	fmt.Println(string(strUm))
+}
+
+```
+
+- struct中如何屏蔽空值字段
+设置 omitempty                   
+```go
+type User struct {
+	Name     string `json:"name"`
+	Pwd      string `json:"pwd"`
+	Info     string `json:"info, omitempty"`
+	MoreInfo string `json:"more_info"`
+}
+```
+
+- client向server发送10000个数据，server一次只能处理100个。                     
+chan即可。                     
+
+
+
+
+
     
     
         
