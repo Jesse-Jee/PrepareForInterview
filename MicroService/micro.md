@@ -177,6 +177,10 @@ api-interface 可以称为是BFF，是一种适配服务。将后端微服务进
 - gRPC 使用protobuf协议二进制数据传输，rest使用json等。               
 - gRPC 使用双向流。
 - 都支持tls/ssl加密  
+
+## gRPC发起一次调用，做了哪些操作。     
+gRPC sub 经过动态代理->序列化、反序列化->解码编码->Internet         
+gRPC server Internet->编码解码->序列化、反序列化->动态代理
  
 # 服务发现
 ## 客户端发现
