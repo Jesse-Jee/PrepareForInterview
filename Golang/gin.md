@@ -132,3 +132,12 @@ gin中间件实现原理是设计模式中的责任链模式，责任链模式�
 
 # 设计模式
 责任链模式。
+
+
+# gin如何做参数校验
+gin.context中的bind方法。                    
+tag中加校验规则。比如不能为空就设置为binding:"required"。长度限制可用min,max.                    
+比如：
+binding:"required,min=6,max=12"
+
+

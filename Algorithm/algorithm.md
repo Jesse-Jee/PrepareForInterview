@@ -1165,6 +1165,42 @@ func bfs(a, b *TreeNode) bool {
 }   
 ````
 
+## 剑指Offer40.最小的k个数
+输入整数数组 arr ，找出其中最小的 k 个数。例如，输入4、5、1、6、2、7、3、8这8个数字，则最小的4个数字是1、2、3、4。                    
+
+```go
+func getLeastNumbers(arr []int, k int) []int {
+    if k >= len(arr) {
+        return arr
+    }
+    quickSort(arr,0, len(arr)-1)
+    return arr[:k]
+}
+
+func quickSort(arr []int, begin, end int) {
+    if begin > end {
+        return
+    }
+    pivot := partition(arr, begin, end)
+    quickSort(arr, begin, pivot - 1)
+    quickSort(arr, pivot + 1, end)
+}
+
+func partition(arr []int, begin, end int) int {
+    pivot := end
+    i := begin
+    for j := begin; j < end; j++ {
+        if arr[j] < arr[pivot] {
+            arr[i], arr[j] = arr[j], arr[i]
+            i++
+        }
+    }
+    arr[i], arr[pivot] = arr[pivot], arr[i]
+    return i
+}
+```
+
+
 
 ## 判断是否是平衡二叉树
 

@@ -262,8 +262,19 @@ server {
   - Go中没有object概念，只有struct。
   - 面向对象的编程，没有继承。                       
     
-
-
+- go中创建一个线程占多大空间？
+    2M左右
+  
+- 有goroutine一直占用资源，如何处理？调度器如何通知其他goroutine
+    抢占，通过信号协作通知。                         
+  
+- 一个线程发生OOM？
+    会被kill掉，其他线程不受影响。
+  
+- goroutine发生oom
         
-    
+- top 命令输出什么
+    进程ID，命令，CPU占用，时间，状态等
 
+- G的状态
+    gidle, grunning, spwining
